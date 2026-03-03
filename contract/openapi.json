@@ -1,0 +1,75 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Mock AI Server",
+    "version": "1.0.0",
+    "description": "Mock AI server that proxies streaming chat completions via Qwen (DashScope)."
+  },
+  "paths": {
+    "/api/ai/chat": {
+      "post": {
+        "summary": "Send a chat message and receive a streaming AI reply",
+        "description": "Proxies the request to the Qwen (DashScope) streaming API. The response is streamed as plain text chunks. A session ID is returned in the `X-Session-Id` response header so the client can maintain conversation history across requests.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "The user's chat message.",
+                    "example": "Hello, who are you?"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "description": "Optional session identifier to continue an existing conversation. If omitted a new session is created.\n",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Streamed plain-text AI reply",
+            "headers": {
+              "X-Session-Id": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Session ID for the current conversation."
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "Hello! I am a helpful assistant."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "AI service error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "AI 服务出错"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "tags": []
+}
