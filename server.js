@@ -2,6 +2,8 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const OpenAI = require('openai').default
+const swaggerUi = require('swagger-ui-express')
+const { createOpenApiSpec } = require('./swagger')
 
 const app = express()
 app.use(cors({
@@ -17,6 +19,68 @@ const openai = new OpenAI({
 const sessions = new Map()
 // 结构: Map<sessionId, Array<{role, content}>>
 
+const spec = createOpenApiSpec()
+app.get('/openapi.json', (req, res) => res.json(spec))
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(spec))
+
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     summary: 健康检查
+ *     responses:
+ *       200:
+ *         description: 服务正常
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ */
+app.get('/health', (req, res) => res.json({ status: 'ok' }))
+
+/**
+ * @openapi
+ * /api/ai/chat:
+ *   post:
+ *     summary: 调用 AI 聊天（千问流式输出）
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: 用户发送的消息
+ *               sessionId:
+ *                 type: string
+ *                 description: 会话 ID（可选，不传则自动生成）
+ *     responses:
+ *       200:
+ *         description: 流式文本输出
+ *         headers:
+ *           X-Session-Id:
+ *             schema:
+ *               type: string
+ *             description: 本次会话的 Session ID
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       500:
+ *         description: AI 服务出错
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
 // 模拟公司 Java 后端的 AI 接口，真实调用千问流式接口
 app.post('/api/ai/chat', async (req, res) => {
   const { message, sessionId: clientSessionId } = req.body
