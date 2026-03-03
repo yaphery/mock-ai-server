@@ -2,6 +2,8 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const OpenAI = require('openai').default
+const swaggerJsdoc = require('swagger-jsdoc')
+const swaggerUi = require('swagger-ui-express')
 
 const app = express()
 app.use(cors({
@@ -14,9 +16,69 @@ const openai = new OpenAI({
   baseURL: process.env.DASHSCOPE_BASE_URL,
 })
 
+const swaggerSpec = swaggerJsdoc({
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Mock AI Server',
+      version: '1.0.0',
+      description: '模拟公司 Java 后端的 AI 接口，真实调用千问（Qwen）流式接口',
+    },
+    servers: [{ url: `http://localhost:${process.env.PORT || 3000}` }],
+  },
+  apis: ['./server.js'],
+})
+
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+app.get('/api-json', (req, res) => res.json(swaggerSpec))
+
 const sessions = new Map()
 // 结构: Map<sessionId, Array<{role, content}>>
 
+/**
+ * @openapi
+ * /api/ai/chat:
+ *   post:
+ *     summary: 发送消息并获取 AI 流式回复
+ *     description: 将用户消息发送给千问模型，以流式（chunked）方式返回 AI 回复文本。响应头 X-Session-Id 包含本次会话 ID。
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: 用户输入的消息内容
+ *                 example: 你好，请介绍一下自己
+ *               sessionId:
+ *                 type: string
+ *                 description: 会话 ID（可选，不传则由服务端生成）
+ *                 example: 550e8400-e29b-41d4-a716-446655440000
+ *     responses:
+ *       200:
+ *         description: AI 流式文本回复
+ *         headers:
+ *           X-Session-Id:
+ *             description: 本次会话 ID
+ *             schema:
+ *               type: string
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: 你好！我是通义千问，有什么可以帮你的？
+ *       500:
+ *         description: AI 服务调用失败
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: AI 服务出错
+ */
 // 模拟公司 Java 后端的 AI 接口，真实调用千问流式接口
 app.post('/api/ai/chat', async (req, res) => {
   const { message, sessionId: clientSessionId } = req.body
